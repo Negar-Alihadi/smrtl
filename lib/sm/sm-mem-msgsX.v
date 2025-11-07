@@ -5,8 +5,8 @@
 // memories. They are parameterized by the number of bits in the address,
 // data, and opaque field.
 
-`ifndef SM_MEM_MSGS_V
-`define SM_MEM_MSGS_V
+`ifndef SM_MEM_MSGSX_V
+`define SM_MEM_MSGSX_V
 
 `include "vc-trace.v"
 
@@ -32,15 +32,15 @@
 // length field is zero, then the read or write should be for the full
 // width of the data field.
 //
-// For example, if the opaque field is 8 bits, the address is 32 bits and
-// the data is also 32 bits, then the message format is as follows:
+// For example, if the opaque field is 8 bits, the address is 40 bits and
+// the data is also 64 bits, then the message format is as follows:
 //
-//   77  74 73           66 65              34 33  32 31               0
+//  119 115 114         107 106              67 66  64 63               0
 //  +------+---------------+------------------+------+------------------+
 //  | type | opaque        | addr             | len  | data             |
 //  +------+---------------+------------------+------+------------------+
 //
-// The length field is two bits. A length value of one means read or write
+// The length field is three bits. A length value of one means read or write
 // a single byte, a length value of two means read or write two bytes, and
 // so on. A length value of zero means read or write all four bytes. Note
 // that not all memories will necessarily support any alignment and/or any
@@ -57,35 +57,35 @@
 // macros more succinct.
 
 // Data field
-
+// 64
 `define SM_MEM_REQ_MSG_DATA_NBITS(o_,a_,d_)                             \
   d_
-
+// 63
 `define SM_MEM_REQ_MSG_DATA_MSB(o_,a_,d_)                               \
   ( `SM_MEM_REQ_MSG_DATA_NBITS(o_,a_,d_) - 1 )
-
+// 63:0
 `define SM_MEM_REQ_MSG_DATA_FIELD(o_,a_,d_)                             \
   (`SM_MEM_REQ_MSG_DATA_MSB(o_,a_,d_)):                                 \
   0
 
 // Length field 
-
+// 3
 `define SM_MEM_REQ_MSG_LEN_NBITS(o_,a_,d_)                              \
   ($clog2(d_/8))
-
+// 63+3=66
 `define SM_MEM_REQ_MSG_LEN_MSB(o_,a_,d_)                                \
   (   `SM_MEM_REQ_MSG_DATA_MSB(o_,a_,d_)                                \
     + `SM_MEM_REQ_MSG_LEN_NBITS(o_,a_,d_) )
-
+// 66:64
 `define SM_MEM_REQ_MSG_LEN_FIELD(o_,a_,d_)                              \
   (`SM_MEM_REQ_MSG_LEN_MSB(o_,a_,d_)):                                  \
   (`SM_MEM_REQ_MSG_DATA_MSB(o_,a_,d_) + 1)
 
 // Address field
-
+// 40
 `define SM_MEM_REQ_MSG_ADDR_NBITS(o_,a_,d_)                             \
   a_
-
+// 66+40 = 106
 `define SM_MEM_REQ_MSG_ADDR_MSB(o_,a_,d_)                               \
   (   `SM_MEM_REQ_MSG_LEN_MSB(o_,a_,d_)                                 \
     + `SM_MEM_REQ_MSG_ADDR_NBITS(o_,a_,d_) )
@@ -168,8 +168,11 @@ module sm_MemReqMsgPack
   assign msg[`SM_MEM_REQ_MSG_TYPE_FIELD(o,a,d)]   = type_;
   assign msg[`SM_MEM_REQ_MSG_OPAQUE_FIELD(o,a,d)] = opaque;
   assign msg[`SM_MEM_REQ_MSG_ADDR_FIELD(o,a,d)]   = addr;
+  // assign msg[86:67]   = addr;
   assign msg[`SM_MEM_REQ_MSG_LEN_FIELD(o,a,d)]    = len;
+  // assign msg[66:64]   = len;
   assign msg[`SM_MEM_REQ_MSG_DATA_FIELD(o,a,d)]   = data;
+  // assign msg[63:0]   = data;
 
 endmodule
 
@@ -304,33 +307,34 @@ module sm_MemReqMsgTrace
 endmodule
 
 //========================================================================
-// Memory Response Message
+// Memory Response Message in X
 //========================================================================
 // Memory request messages can either be for a read or write. Read
-// responses include an opaque field, the actual data, and the number of
-// bytes, while write responses currently include just the opaque field.
+// responses include an opaque field, the address, the actual data, and the 
+// number of bytes, while write responses currently include just the opaque 
+// field.
 //
 // Message Format:
 //
-//    5b    p_opaque_nbits  calc   p_data_nbits
-//  +------+---------------+------+------------------+
-//  | type | opaque        | len  | data             |
-//  +------+---------------+------+------------------+
+//    5b    p_opaque_nbits  p_addr_nbits       calc   p_data_nbits
+//  +------+---------------+------------------+------+------------------+
+//  | type | opaque        | addr             | len  | data             |
+//  +------+---------------+------------------+------+------------------+
 //
 // The message type is parameterized by the number of bits in the opaque
-// field and data field. Note that the size of the length field is
-// caclulated from the number of bits in the data field, and that the
-// length field is expressed in _bytes_. If the value of the length field
-// is zero, then the read or write should be for the full width of the
-// data field.
+// field, address field, and data field. Note that the size of the length 
+// field is caclulated from the number of bits in the data field, and 
+// that the length field is expressed in _bytes_. If the value of the 
+// length field is zero, then the read or write should be for the full 
+// width of the data field.
 //
-// For example, if the opaque field is 8 bits and the data is 32 bits,
-// then the message format is as follows:
+// For example, if the opaque field is 8 bits, the address is 32 bits and 
+// the data is 32 bits, then the message format is as follows:
 //
-//   46  42 41           34 33  32 31               0
-//  +------+---------------+------+------------------+
-//  | type | opaque        | len  | data             |
-//  +------+---------------+------+------------------+
+//   78  74 73           66 65              34 33  32 31               0
+//  +------+---------------+------------------+------+------------------+
+//  | type | opaque        | addr             | len  | data             |
+//  +------+---------------+------------------+------+------------------+
 //
 // The length field is two bits. A length value of one means one byte was
 // read, a length value of two means two bytes were read, and so on. A
@@ -373,6 +377,18 @@ endmodule
   (`SM_MEM_RESP_MSG_LEN_MSB(o_,d_)):                                    \
   (`SM_MEM_RESP_MSG_DATA_MSB(o_,d_) + 1)
 
+// XXXXXXX Address field XXXXXXX
+`define SM_MEM_RESP_MSG_ADDR_NBITSX(o_,a_,d_)                           \
+  a_
+
+`define SM_MEM_RESP_MSG_ADDR_MSBX(o_,a_,d_)                             \
+  (   `SM_MEM_RESP_MSG_LEN_MSB(o_,d_)                                   \
+    + `SM_MEM_RESP_MSG_ADDR_NBITSX(o_,a_,d_) )
+
+`define SM_MEM_RESP_MSG_ADDR_FIELDX(o_,a_,d_)                           \
+  (`SM_MEM_RESP_MSG_ADDR_MSBX(o_,a_,d_)):                               \
+  (`SM_MEM_RESP_MSG_LEN_MSB(o_,d_) + 1)
+
 // Opaque field
 
 `define SM_MEM_RESP_MSG_OPAQUE_NBITS(o_,d_)                             \
@@ -381,10 +397,18 @@ endmodule
 `define SM_MEM_RESP_MSG_OPAQUE_MSB(o_,d_)                               \
   (   `SM_MEM_RESP_MSG_LEN_MSB(o_,d_)                                   \
     + `SM_MEM_RESP_MSG_OPAQUE_NBITS(o_,d_) )
+// XXXXXXX Opaque MSB XXXXXXX
+`define SM_MEM_RESP_MSG_OPAQUE_MSBX(o_,a_,d_)                           \
+  (   `SM_MEM_RESP_MSG_ADDR_MSBX(o_,a_,d_)                              \
+    + `SM_MEM_RESP_MSG_OPAQUE_NBITS(o_,d_) )
 
 `define SM_MEM_RESP_MSG_OPAQUE_FIELD(o_,d_)                             \
   (`SM_MEM_RESP_MSG_OPAQUE_MSB(o_,d_)):                                 \
   (`SM_MEM_RESP_MSG_LEN_MSB(o_,d_) + 1)
+// XXXXXXX Opaque FIELD XXXXXXX
+`define SM_MEM_RESP_MSG_OPAQUE_FIELDX(o_,a_,d_)                         \
+  (`SM_MEM_RESP_MSG_OPAQUE_MSBX(o_,a_,d_)):                             \
+  (`SM_MEM_RESP_MSG_ADDR_MSBX(o_,a_,d_) + 1)
 
 // Type field
 
@@ -402,16 +426,32 @@ endmodule
 `define SM_MEM_RESP_MSG_TYPE_MSB(o_,d_)                                 \
   (   `SM_MEM_RESP_MSG_OPAQUE_MSB(o_,d_)                                \
     + `SM_MEM_RESP_MSG_TYPE_NBITS(o_,d_) )
+// XXXXXXX Type MSB XXXXXXX
+`define SM_MEM_RESP_MSG_TYPE_MSBX(o_,a_,d_)                             \
+  (   `SM_MEM_RESP_MSG_OPAQUE_MSBX(o_,a_,d_)                            \
+    + `SM_MEM_RESP_MSG_TYPE_NBITS(o_,d_) )
 
 `define SM_MEM_RESP_MSG_TYPE_FIELD(o_,d_)                               \
   (`SM_MEM_RESP_MSG_TYPE_MSB(o_,d_)):                                   \
   (`SM_MEM_RESP_MSG_OPAQUE_MSB(o_,d_) + 1)
+// XXXXXXX Type Field XXXXXXX
+`define SM_MEM_RESP_MSG_TYPE_FIELDX(o_,a_,d_)                           \
+  (`SM_MEM_RESP_MSG_TYPE_MSBX(o_,a_,d_)):                               \
+  (`SM_MEM_RESP_MSG_OPAQUE_MSBX(o_,a_,d_) + 1)
+
 
 // Total size of message
-
 `define SM_MEM_RESP_MSG_NBITS(o_,d_)                                    \
   (   `SM_MEM_RESP_MSG_TYPE_NBITS(o_,d_)                                \
     + `SM_MEM_RESP_MSG_OPAQUE_NBITS(o_,d_)                              \
+    + `SM_MEM_RESP_MSG_LEN_NBITS(o_,d_)                                 \
+    + `SM_MEM_RESP_MSG_DATA_NBITS(o_,d_) )
+
+// XXXXXXX Total size of message XXXXXXX
+`define SM_MEM_RESP_MSG_NBITSX(o_,a_,d_)                                \
+  (   `SM_MEM_RESP_MSG_TYPE_NBITS(o_,d_)                                \
+    + `SM_MEM_RESP_MSG_OPAQUE_NBITS(o_,d_)                              \
+    + `SM_MEM_RESP_MSG_ADDR_NBITSX(o_,a_,d_)                            \
     + `SM_MEM_RESP_MSG_LEN_NBITS(o_,d_)                                 \
     + `SM_MEM_RESP_MSG_DATA_NBITS(o_,d_) )
 
@@ -447,6 +487,40 @@ module sm_MemRespMsgPack
 
 endmodule
 
+// XXXXXXX Mem Resp Message Pack XXXXXXX
+module sm_MemRespMsgPackX
+#(
+  parameter p_opaque_nbits = 8,
+  parameter p_addr_nbits   = 32,
+  parameter p_data_nbits   = 32,
+
+  // Shorter names for message type, not to be set from outside the module
+  parameter o = p_opaque_nbits,
+  parameter a = p_addr_nbits,
+  parameter d = p_data_nbits
+)(
+  // Input message
+
+  input  [`SM_MEM_RESP_MSG_TYPE_NBITS(o,d)-1:0]    type_,
+  input  [`SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d)-1:0]  opaque,
+  input  [`SM_MEM_RESP_MSG_ADDR_NBITSX(o,a,d)-1:0] addr,
+  input  [`SM_MEM_RESP_MSG_LEN_NBITS(o,d)-1:0]     len,
+  input  [`SM_MEM_RESP_MSG_DATA_NBITS(o,d)-1:0]    data,
+
+  // Output bits
+
+  output [`SM_MEM_RESP_MSG_NBITSX(o,a,d)-1:0]      msg
+);
+
+  assign msg[`SM_MEM_RESP_MSG_TYPE_FIELDX(o,a,d)]   = type_;
+  assign msg[`SM_MEM_RESP_MSG_OPAQUE_FIELDX(o,a,d)] = opaque;
+  assign msg[`SM_MEM_RESP_MSG_ADDR_FIELDX(o,a,d)]   = addr;
+  assign msg[`SM_MEM_RESP_MSG_LEN_FIELD(o,d)]       = len;
+  assign msg[`SM_MEM_RESP_MSG_DATA_FIELD(o,d)]      = data;
+
+endmodule
+
+
 //------------------------------------------------------------------------
 // Memory Response Message: Unpack message
 //------------------------------------------------------------------------
@@ -454,27 +528,31 @@ endmodule
 module sm_MemRespMsgUnpack
 #(
   parameter p_opaque_nbits = 8,
+  parameter p_addr_nbits   = 32,
   parameter p_data_nbits   = 32,
 
   // Shorter names for message type, not to be set from outside the module
   parameter o = p_opaque_nbits,
+  parameter a = p_addr_nbits,
   parameter d = p_data_nbits
 )(
 
   // Input bits
 
-  input [`SM_MEM_RESP_MSG_NBITS(o,d)-1:0]         msg,
+  input [`SM_MEM_RESP_MSG_NBITSX(o,a,d)-1:0]         msg,
 
   // Output message
 
-  output [`SM_MEM_RESP_MSG_TYPE_NBITS(o,d)-1:0]   type_,
-  output [`SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d)-1:0] opaque,
-  output [`SM_MEM_RESP_MSG_LEN_NBITS(o,d)-1:0]    len,
-  output [`SM_MEM_RESP_MSG_DATA_NBITS(o,d)-1:0]   data
+  output [`SM_MEM_RESP_MSG_TYPE_NBITS(o,d)-1:0]    type_,
+  output [`SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d)-1:0]  opaque,
+  output [`SM_MEM_RESP_MSG_ADDR_NBITSX(o,a,d)-1:0] addr,
+  output [`SM_MEM_RESP_MSG_LEN_NBITS(o,d)-1:0]     len,
+  output [`SM_MEM_RESP_MSG_DATA_NBITS(o,d)-1:0]    data
 );
 
-  assign type_   = msg[`SM_MEM_RESP_MSG_TYPE_FIELD(o,d)];
-  assign opaque  = msg[`SM_MEM_RESP_MSG_OPAQUE_FIELD(o,d)];
+  assign type_   = msg[`SM_MEM_RESP_MSG_TYPE_FIELDX(o,a,d)];
+  assign opaque  = msg[`SM_MEM_RESP_MSG_OPAQUE_FIELDX(o,a,d)];
+  assign addr    = msg[`SM_MEM_RESP_MSG_ADDR_FIELDX(o,a,d)];
   assign len     = msg[`SM_MEM_RESP_MSG_LEN_FIELD(o,d)];
   assign data    = msg[`SM_MEM_RESP_MSG_DATA_FIELD(o,d)];
 
@@ -487,41 +565,45 @@ endmodule
 module sm_MemRespMsgTrace
 #(
   parameter p_opaque_nbits = 8,
+  parameter p_addr_nbits   = 32,
   parameter p_data_nbits   = 32,
 
   // Shorter names for message type, not to be set from outside the module
   parameter o = p_opaque_nbits,
+  parameter a = p_addr_nbits,
   parameter d = p_data_nbits
 )(
-  input                                     clk,
-  input                                     reset,
-  input                                     val,
-  input                                     rdy,
-  input [`SM_MEM_RESP_MSG_NBITS(o,d)-1:0] msg
+  input                                      clk,
+  input                                      reset,
+  input                                      val,
+  input                                      rdy,
+  input [`SM_MEM_RESP_MSG_NBITSX(o,a,d)-1:0] msg
 );
 
   // Extract fields
 
-  wire [`SM_MEM_RESP_MSG_TYPE_NBITS(o,d)-1:0]   type_;
-  wire [`SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d)-1:0] opaque;
-  wire [`SM_MEM_RESP_MSG_LEN_NBITS(o,d)-1:0]    len;
-  wire [`SM_MEM_RESP_MSG_DATA_NBITS(o,d)-1:0]   data;
+  wire [`SM_MEM_RESP_MSG_TYPE_NBITS(o,d)-1:0]    type_;
+  wire [`SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d)-1:0]  opaque;
+  wire [`SM_MEM_RESP_MSG_ADDR_NBITSX(o,a,d)-1:0] addr;
+  wire [`SM_MEM_RESP_MSG_LEN_NBITS(o,d)-1:0]     len;
+  wire [`SM_MEM_RESP_MSG_DATA_NBITS(o,d)-1:0]    data;
 
-  sm_MemRespMsgUnpack#(o,d) mem_req_msg_unpack
+  sm_MemRespMsgUnpack#(o,a,d) mem_req_msg_unpack
   (
     .msg     (msg),
     .type_   (type_),
     .opaque  (opaque),
+    .addr    (addr),
     .len     (len),
     .data    (data)
   );
 
   // Short names
 
-  localparam c_msg_nbits = `SM_MEM_RESP_MSG_NBITS(o,d);
-  localparam c_read      = `SM_MEM_RESP_MSG_TYPE_READ;
-  localparam c_write     = `SM_MEM_RESP_MSG_TYPE_WRITE;
-  localparam c_write_init  = `SM_MEM_RESP_MSG_TYPE_WRITE_INIT;
+  localparam c_msg_nbits  = `SM_MEM_RESP_MSG_NBITSX(o,a,d);
+  localparam c_read       = `SM_MEM_RESP_MSG_TYPE_READ;
+  localparam c_write      = `SM_MEM_RESP_MSG_TYPE_WRITE;
+  localparam c_write_init = `SM_MEM_RESP_MSG_TYPE_WRITE_INIT;
 
   // Line tracing
 
@@ -566,5 +648,5 @@ module sm_MemRespMsgTrace
 
 endmodule
 
-`endif /* SM_MEM_MSGS_V */
+`endif /* SM_MEM_MSGSX_V */
 

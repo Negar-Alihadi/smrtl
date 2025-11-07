@@ -4,10 +4,10 @@
 // This is single-ported test memory that handles a limited subset of
 // memory request messages and returns memory response messages.
 
-`ifndef SM_TEST_MEM_1PORT_V
-`define SM_TEST_MEM_1PORT_V
+`ifndef SM_TEST_MEM_1PORTX_V
+`define SM_TEST_MEM_1PORTX_V
 
-`include "sm-mem-msgs.v"
+`include "sm-mem-msgsX.v"
 `include "vc-queues.v"
 `include "vc-assert.v"
 `include "vc-trace.v"
@@ -30,7 +30,8 @@ module sm_TestMem_1port
 
   // Local constants not meant to be set from outside the module
   parameter c_req_nbits  = `SM_MEM_REQ_MSG_NBITS(o,a,d),
-  parameter c_resp_nbits = `SM_MEM_RESP_MSG_NBITS(o,d)
+  // parameter c_resp_nbits = `SM_MEM_RESP_MSG_NBITS(o,d)
+  parameter c_resp_nbits = `SM_MEM_RESP_MSG_NBITSX(o,a,d)
 )(
   input clk,
   input reset,
@@ -94,6 +95,7 @@ module sm_TestMem_1port
 
   localparam c_resp_type_nbits   = `SM_MEM_RESP_MSG_TYPE_NBITS(o,d);
   localparam c_resp_opaque_nbits = `SM_MEM_RESP_MSG_OPAQUE_NBITS(o,d);
+  localparam c_resp_addr_nbits   = `SM_MEM_RESP_MSG_ADDR_NBITSX(o,a,d);
   localparam c_resp_len_nbits    = `SM_MEM_RESP_MSG_LEN_NBITS(o,d);
   localparam c_resp_data_nbits   = `SM_MEM_RESP_MSG_DATA_NBITS(o,d);
 
@@ -257,12 +259,28 @@ module sm_TestMem_1port
   // Pack the response message
   //----------------------------------------------------------------------
 
+  // wire [c_resp_nbits-1:0] memresp_msg_M;
+
+  // sm_MemRespMsgPack#(o,d) memresp_msg_pack
+  // (
+  //   .type_  (memreq_msg_type_M),
+  //   .opaque (memreq_msg_opaque_M),
+  //   .len    (memreq_msg_len_M),
+  //   .data   (read_data_M),
+  //   .msg    (memresp_msg_M)
+  // );
+
+  //----------------------------------------------------------------------
+  // XXXXXXX Pack the response message XXXXXXX 
+  //----------------------------------------------------------------------
+
   wire [c_resp_nbits-1:0] memresp_msg_M;
 
-  sm_MemRespMsgPack#(o,d) memresp_msg_pack
+  sm_MemRespMsgPackX#(o,a,d) memresp_msg_pack
   (
     .type_  (memreq_msg_type_M),
     .opaque (memreq_msg_opaque_M),
+    .addr   (memreq_msg_addr_M),   // now send addr back too
     .len    (memreq_msg_len_M),
     .data   (read_data_M),
     .msg    (memresp_msg_M)
@@ -321,7 +339,7 @@ module sm_TestMem_1port
     .msg   (memreq_msg)
   );
 
-  sm_MemRespMsgTrace#(o,d) memresp_trace
+  sm_MemRespMsgTrace#(o,a,d) memresp_trace
   (
     .clk   (clk),
     .reset (reset),
@@ -344,5 +362,5 @@ module sm_TestMem_1port
 
 endmodule
 
-`endif /* SM_TEST_MEM_1PORT_V */
+`endif /* SM_TEST_MEM_1PORTX_V */
 

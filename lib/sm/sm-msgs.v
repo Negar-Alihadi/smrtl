@@ -11,14 +11,12 @@
 //------------------------------------------------------------------------
 // Source RoCC Message: Unpack message
 //------------------------------------------------------------------------
-// Unpack a vector from the source into 
  module sm_RoccCmdUnpack
 #(
-  parameter p_rs1bits  = 32 
+  parameter p_rs1bits  = 32
 )(
-  input  logic [p_rs1bits+p_rs1bits+32-1:0] msg,
+  input  logic [p_rs1bits+32-1:0] msg,
 
-  output logic [p_rs1bits-1:0] cmd_rs2,
   output logic [p_rs1bits-1:0] cmd_rs1,
 
   output logic [6:0] cmd_inst_funct, // set to 8-bit for ease of storage in xfile
@@ -31,7 +29,6 @@
   output logic [6:0] cmd_inst_opcode
 );
 
-  assign cmd_rs2         = msg[p_rs1bits+p_rs1bits+32-1:p_rs1bits+32];
   assign cmd_rs1         = msg[p_rs1bits+32-1:32];
   assign cmd_inst_funct  = msg[31:25];
   assign cmd_inst_rs2    = msg[24:20];

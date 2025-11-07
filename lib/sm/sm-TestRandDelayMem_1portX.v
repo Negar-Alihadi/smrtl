@@ -1,14 +1,14 @@
 //========================================================================
 // Verilog Components: Test Memory with Random Delays
 //========================================================================
-// This is single-ported test memory that handles a limited subset of
+// This is dual-ported test memory that handles a limited subset of
 // memory request messages and returns memory response messages.
 
-`ifndef SM_TEST_RAND_DELAY_MEM_1PORT_V
-`define SM_TEST_RAND_DELAY_MEM_1PORT_V
+`ifndef SM_TEST_RAND_DELAY_MEM_1PORTX_V
+`define SM_TEST_RAND_DELAY_MEM_1PORTX_V
 
-`include "sm-mem-msgs.v"
-`include "sm-TestMem_1port.v"
+`include "sm-mem-msgsX.v"
+`include "sm-TestMem_1portX.v"
 `include "vc-TestRandDelay.v"
 `include "vc-trace.v"
 
@@ -27,7 +27,7 @@ module sm_TestRandDelayMem_1port
 
   // Local constants not meant to be set from outside the module
   parameter c_req_nbits  = `SM_MEM_REQ_MSG_NBITS(o,a,d),
-  parameter c_resp_nbits = `SM_MEM_RESP_MSG_NBITS(o,d)
+  parameter c_resp_nbits = `SM_MEM_RESP_MSG_NBITSX(o,a,d)
 )(
   input                     clk,
   input                     reset,
@@ -54,7 +54,7 @@ module sm_TestRandDelayMem_1port
 );
 
   //------------------------------------------------------------------------
-  // Dual ported test memory
+  // Single ported test memory
   //------------------------------------------------------------------------
 
   wire                    mem_memreq_val;
@@ -145,7 +145,7 @@ module sm_TestRandDelayMem_1port
     .msg   (memreq_msg)
   );
 
-  sm_MemRespMsgTrace#(o,d) memresp_trace
+  sm_MemRespMsgTrace#(o,a,d) memresp_trace
   (
     .clk   (clk),
     .reset (reset),
@@ -168,5 +168,5 @@ module sm_TestRandDelayMem_1port
 
 endmodule
 
-`endif /* SM_TEST_RAND_DELAY_MEM_1PORT_V */
+`endif /* SM_TEST_RAND_DELAY_MEM_1PORTX_V */
 
